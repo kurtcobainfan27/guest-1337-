@@ -1,3 +1,26 @@
+-- Load the Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/UI-Design-Code/Rayfield/main/Library.lua"))()
+
+-- Create the Main Window
+-- This defines the 'Window' variable that all your tabs attach to.
+local Window = Rayfield:CreateWindow({
+    Name = "Guest 1337 Auto Block Script", -- Title for your GUI
+    LoadingTitle = "Loading Script...",
+    LoadingSubtitle = "Preparing features",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "Guest1337",
+        FileName = "AutoBlockConfig"
+    },
+    Keybind = Enum.KeyCode.RightControl -- Key to open/close the GUI (change if desired)
+})
+
+-- Define the Tabs (Make sure these variable names match your existing code)
+-- You need to create the tab objects before you can add toggles to them.
+local PredictiveTab = Window:CreateTab("Predictive", Enum.Font.Code) 
+local FakeBlockTab = Window:CreateTab("Fake Block", Enum.Font.Code)
+local AutoPunchTab = Window:CreateTab("Auto Punch", Enum.Font.Code)
+-- You may have other tabs (e.g., "Edge Killer Tab"). Add them here too!
 -- seeded RNG for varied misses
 math.randomseed(tick())
 
