@@ -481,7 +481,7 @@ local function updateFacingVisual(killer, visual)
     -- color / transparency
     if inRange and facingOkay then
         visual.Color3 = Color3.fromRGB(0, 255, 0)
-        visual.Transparency = `
+        visual.Transparency = 1
     else
         visual.Color3 = Color3.fromRGB(255, 255, 0) -- show yellow when not both conditions
         visual.Transparency = 1
@@ -499,7 +499,7 @@ local function addFacingVisual(killer)
     visual.Adornee = hrp
     visual.AlwaysOnTop = true
     visual.ZIndex = 2
-    visual.Transparency = 0.55
+    visual.Transparency = 1
     visual.Color3 = Color3.fromRGB(0, 255, 0) -- green
 
     visual.Parent = hrp
@@ -612,7 +612,7 @@ local function addKillerCircle(killer)
     circle.Color3 = Color3.fromRGB(255, 0, 0)
     circle.AlwaysOnTop = true
     circle.ZIndex = 1
-    circle.Transparency = 0.6
+    circle.Transparency = 1
     circle.Radius = detectionRange            -- <- use detectionRange exactly
     circle.Height = 0.12                      -- thin disc
     -- place the disc at the feet of the HumanoidRootPart (CFrame is relative to Adornee)
