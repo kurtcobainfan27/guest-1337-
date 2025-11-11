@@ -1,5 +1,5 @@
--- seeded RNG for varied misses
-math.randomseed(tick())
+
+-- improved hookSound: try harder to cache hrp/char immediately
 
 
 
@@ -75,6 +75,20 @@ local autoBlockTriggerSounds = {
     ["12222216"] = true,
     ["105840448036441"] = true,
     ["114742322778642"] = true,
+    ["119583605486352"] = true,
+    ["79980897195554"] = true,
+    ["71805956520207"] = true,
+    ["79391273191671"] = true,
+    ["89004992452376"] = true,
+    ["101553872555606"] = true,
+    ["101698569375359"] = true,
+    ["106300477136129"] = true,
+    ["116581754553533"] = true,
+    ["117231507259853"] = true,
+    ["119089145505438"] = true,
+    ["121954639447247"] = true,
+    ["125213046326879"] = true,
+    ["131406927389838"] = true,
 }
 
 -- Prevent repeated aim triggers for the same animation track
@@ -105,6 +119,7 @@ local autoBlockTriggerAnims = {
 -- State Variables
 local autoBlockOn = false
 local autoBlockAudioOn = false
+
 local doubleblocktech = false
 local blockdelay = 0
 local looseFacing = true
@@ -162,7 +177,7 @@ local predictiveCooldown = 0
 local Dspeed = 5.6 -- you can tweak these numbers
 local Ddelay = 0
 
-local killerNames = {"c00lkidd", "Jason", "JohnDoe", "1x1x1x1", "Noli", "Slasher"}
+local killerNames = {"c00lkidd", "Jason", "JohnDoe", "1x1x1x1", "Noli", "Slasher", "Sixer"}
 local autoPunchOn = false
 local messageWhenAutoPunchOn = false
 local messageWhenAutoPunch = ""
@@ -1485,6 +1500,13 @@ MiscTab:CreateToggle({
 })
 
 MiscTab:CreateButton({
+    Name = "Remove Slowness (only the status effect)",
+    Callback = function(Value)
+        game:GetService("ReplicatedStorage").Modules.StatusEffects.Slowness:Destroy()
+    end,
+})
+
+MiscTab:CreateButton({
     Name = "infinite resistence 100% real not fake trust",
     Callback = function(Value)
         lp:Kick("u got banned from roblxo permandnenly very real not fake trust %100")
@@ -1844,37 +1866,6 @@ local function startChargeAimUntilChargeEnds(fallbackSec)
                 local pred = (type(predictionValue) == "number") and predictionValue or 0
                 local predictedPos = targetHRP.Position + (targetHRP.CFrame.LookVector * pred)
 
-
--- BEGIN WRAPPED PATCH: only apply when aimPunch is active
-if aimPunch then
--- BEGIN PATCH: 2% intentional miss when healthy; perfect accuracy when low HP
-local MISS_CHANCE = 0.02
-local LOW_HP_THRESHOLD = 0.30
-local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-local healthFraction = 1
-if myHum and myHum.MaxHealth and myHum.Health then
-    healthFraction = myHum.Health / math.max(1, myHum.MaxHealth)
-end
-local shouldMiss = false
-if healthFraction > LOW_HP_THRESHOLD then
-    if math.random() <= MISS_CHANCE then
-        shouldMiss = true
-    end
-end
-if shouldMiss then
-    -- compute a small sideways + vertical offset so the punch just misses by the head
-    local lookDir = (predictedPos - (myRoot and myRoot.Position or Vector3.new()))
-    if lookDir.Magnitude <= 0.001 then lookDir = Vector3.new(0,0,1) end
-    local right = Vector3.new(-lookDir.Z, 0, lookDir.X).Unit
-    local sideOffset = right * ((0.6 + math.random()*0.8) * (math.random(2) == 1 and 1 or -1))
-    local upOffset = Vector3.new(0, 0.2 + math.random()*0.6, 0)
-    predictedPos = predictedPos + sideOffset + upOffset
-end
--- END PATCH
-end
--- END WRAPPED PATCH
-
-
                 -- set lookAt while keeping our position
                 pcall(function()
                     myRoot.CFrame = CFrame.lookAt(myRoot.Position, predictedPos)
@@ -2047,7 +2038,15 @@ local function _attemptForSound(sound, idParam, mode)
 
     -- mode-specific extra checks & actions (preserve prints and exact calls)
     if mode == "Block" then
+        if cachedCooldown and cachedCooldown.Text == "" then
+            print("yay")
+        else
+            return
+        end
         fireGuiBlock()
+        if doubleblocktech == true then
+            fireGuiPunch()
+        end
     elseif mode == "Charge" then
         if cachedChargeBtn and cachedChargeBtn:FindFirstChild("CooldownTime") and cachedChargeBtn.CooldownTime.Text == "" then
             print("yay")
@@ -2055,6 +2054,7 @@ local function _attemptForSound(sound, idParam, mode)
             return
         end
         fireGuiCharge()
+        startChargeAimUntilChargeEnds(0.4)
     elseif mode == "Clone" then
         if cachedCloneBtn and cachedCloneBtn:FindFirstChild("CooldownTime") and cachedCloneBtn.CooldownTime.Text == "" then
             print("yay")
@@ -2062,6 +2062,7 @@ local function _attemptForSound(sound, idParam, mode)
             return
         end
         fireGuiClone()
+        startChargeAimUntilChargeEnds(0.4)
     end
 
     -- optimistic local timestamp & throttle this sound (identical)
@@ -2269,14 +2270,14 @@ end
 -- Hook existing Sounds across the game (covers workspace, SoundService, Lighting, etc.)
 for _, desc in ipairs(KillersFolder:GetDescendants()) do
     if desc:IsA("Sound") then
-        pcall(hookSound, desc)
+        hookSound(desc)
     end
 end
 
 -- Hook any future Sounds
 KillersFolder.DescendantAdded:Connect(function(desc)
     if desc:IsA("Sound") then
-        pcall(hookSound, desc)
+        hookSound(desc)
     end
 end)
 -- ===== End Robust Sound Auto Block =====
@@ -2361,7 +2362,7 @@ local function beginDragIntoKiller(killerModel)
         local horiz = Vector3.new(toTarget.X, 0, toTarget.Z)
         if horiz.Magnitude > 0.01 then
             local dir = horiz.Unit
-            bv.Velocity = Vector3.new(0, bv.Velocity.Y, 0)
+            bv.Velocity = Vector3.new(dir.X * Dspeed, bv.Velocity.Y, dir.Z * Dspeed)
         else
             bv.Velocity = Vector3.new(0, bv.Velocity.Y, 0)
         end
@@ -2407,6 +2408,7 @@ RunService.RenderStepped:Connect(function()
                     -- spawn so we don't block the RenderStepped loop
                     task.wait(Ddelay)
                     task.spawn(function() beginDragIntoKiller(nearest) end)
+                    startChargeAimUntilChargeEnds(0.4)
                 end
             end
         end
@@ -2452,6 +2454,7 @@ task.spawn(function()
             if nearest then
                 task.wait(Ddelay)
                 task.spawn(function() beginDragIntoKiller(nearest) end)
+                startChargeAimUntilChargeEnds(0.4)
             end
         end
         task.wait(0.12) -- throttle checks
@@ -2465,52 +2468,6 @@ local TRACK_DEBOUNCE = 0.45   -- seconds to avoid retriggering same track
 local START_WINDOW = 0     -- consider a track "starting" if TimePosition <= START_WINDOW
 
 local trackLastTriggered = setmetatable({}, { __mode = "k" }) -- weak keys (AnimationTrack -> last tick)
-
-RunService.RenderStepped:Connect(function()
-    if not doubleblocktech then return end
-    local char = lp and lp.Character
-    if not char then return end
-
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local animator = cachedAnimator
-    if not animator then
-        refreshAnimator()
-        animator = cachedAnimator
-    end
-
-    -- ensure GUI refs fresh if missing (helps when GUI recreates)
-    if _REFRESH_UI_IF_NIL and (not cachedPunchBtn or not cachedCharges) and type(refreshUIRefs) == "function" then
-        pcall(refreshUIRefs)
-    end
-
-    for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
-        local ok, animId = pcall(function()
-            local a = track.Animation
-            return a and tostring(a.AnimationId):match("%d+")
-        end)
-        if ok and animId and table.find(blockAnimIds, animId) then
-            -- safe read of time position
-            local timePos = 0
-            pcall(function() timePos = track.TimePosition or 0 end)
-
-            -- only trigger when the track is just starting (helps with timing)
-            if timePos <= START_WINDOW then
-                local last = trackLastTriggered[track]
-                if not last or (tick() - last) >= TRACK_DEBOUNCE then
-                    trackLastTriggered[track] = tick()
-                    -- extra safety: ensure punch button exists before trying
-                    if cachedPunchBtn == nil and type(refreshUIRefs) == "function" then
-                        pcall(refreshUIRefs)
-                    end
-
-                    -- try GUI-based punch activation (this function already handles safety)
-                    print("trying to punch")
-                    pcall(fireGuiPunch)
-                end
-            end
-        end
-    end
-end)
 
 
 -- Play a custom charge animation and stop it when LP touches a non-player part or after 4s
@@ -2910,37 +2867,6 @@ RunService.RenderStepped:Connect(function()
                                         while tick() - start < AIM_WINDOW do
                                             if myRoot and root and root.Parent then
                                                 local predictedPos = root.Position + (root.CFrame.LookVector * predictionValue)
-
-
--- BEGIN WRAPPED PATCH: only apply when aimPunch is active
-if aimPunch then
--- BEGIN PATCH: 2% intentional miss when healthy; perfect accuracy when low HP
-local MISS_CHANCE = 0.02
-local LOW_HP_THRESHOLD = 0.30
-local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
-local healthFraction = 1
-if myHum and myHum.MaxHealth and myHum.Health then
-    healthFraction = myHum.Health / math.max(1, myHum.MaxHealth)
-end
-local shouldMiss = false
-if healthFraction > LOW_HP_THRESHOLD then
-    if math.random() <= MISS_CHANCE then
-        shouldMiss = true
-    end
-end
-if shouldMiss then
-    -- compute a small sideways + vertical offset so the punch just misses by the head
-    local lookDir = (predictedPos - (myRoot and myRoot.Position or Vector3.new()))
-    if lookDir.Magnitude <= 0.001 then lookDir = Vector3.new(0,0,1) end
-    local right = Vector3.new(-lookDir.Z, 0, lookDir.X).Unit
-    local sideOffset = right * ((0.6 + math.random()*0.8) * (math.random(2) == 1 and 1 or -1))
-    local upOffset = Vector3.new(0, 0.2 + math.random()*0.6, 0)
-    predictedPos = predictedPos + sideOffset + upOffset
-end
--- END PATCH
-end
--- END WRAPPED PATCH
-
                                                 myRoot.CFrame = CFrame.lookAt(myRoot.Position, predictedPos)
                                             end
                                             task.wait()
